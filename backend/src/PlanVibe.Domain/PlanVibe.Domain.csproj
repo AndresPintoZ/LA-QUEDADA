@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Capa de dominio. Es el núcleo de la arquitectura limpia y NO referencia ninguna otra capa
+    ni ningún paquete de infraestructura: aquí solo viven reglas de negocio expresadas en C# puro.
+    Si algún día necesita EF Core, Npgsql o ASP.NET, es señal de que la regla está en el sitio equivocado.
+  -->
+  <PropertyGroup>
+    <RootNamespace>PlanVibe.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>
