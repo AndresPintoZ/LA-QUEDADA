@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PlanVibe.Api/PlanVibe.Api.csproj" />
+    <Project Path="src/PlanVibe.Application/PlanVibe.Application.csproj" />
+    <Project Path="src/PlanVibe.Domain/PlanVibe.Domain.csproj" />
+    <Project Path="src/PlanVibe.Infrastructure/PlanVibe.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PlanVibe.Api.IntegrationTests/PlanVibe.Api.IntegrationTests.csproj" />
+    <Project Path="tests/PlanVibe.Application.UnitTests/PlanVibe.Application.UnitTests.csproj" />
+    <Project Path="tests/PlanVibe.Domain.UnitTests/PlanVibe.Domain.UnitTests.csproj" />
+  </Folder>
+</Solution>

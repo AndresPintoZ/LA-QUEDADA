@@ -1,0 +1,15 @@
+# Las migraciones las genera "dotnet ef migrations add" y se regeneran enteras.
+# Aplicarles las reglas de estilo del proyecto no aporta nada: cualquier corrección
+# manual desaparece en la siguiente regeneración, y el archivo no se lee ni se
+# mantiene a mano, solo se revisa el SQL que produce.
+#
+# Se desactiva únicamente el ANÁLISIS DE ESTILO. Los errores de compilación y los
+# avisos de seguridad siguen aplicándose con normalidad.
+
+[*.cs]
+generated_code = true
+
+dotnet_diagnostic.IDE0161.severity = none   # namespace con ámbito de archivo
+dotnet_diagnostic.CA1861.severity = none    # matrices constantes como argumento
+dotnet_diagnostic.CA1062.severity = none    # validación de argumentos nulos
+dotnet_diagnostic.IDE0040.severity = none   # modificadores de accesibilidad

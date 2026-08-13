@@ -1,0 +1,116 @@
+# =============================================================================
+# Integración continua de PlanVibe.
+#
+# Comprueba lo mismo que se comprueba en local, para que nadie tenga que
+# preguntarse si «en mi equipo funciona» significa algo.
+# =============================================================================
+
+name: Integración continua
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Permisos mínimos: solo leer el repositorio. Si un paso comprometido intentara
+# escribir, no podría.
+permissions:
+  contents: read
+
+# Una ejecución por rama: si llegan dos cambios seguidos, se cancela la anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend · compilar y probar
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar dependencias
+        # NuGetAudit está activo y las vulnerabilidades son error de compilación,
+        # así que este paso también es una comprobación de seguridad.
+        run: dotnet restore backend/PlanVibe.slnx
+
+      - name: Compilar
+        # Los avisos son errores (Directory.Build.props): si algo compila aquí,
+        # compila sin deuda acumulada.
+        run: dotnet build backend/PlanVibe.slnx --configuration Release --no-restore
+
+      - name: Ejecutar pruebas
+        # El agente de GitHub trae Docker, así que las pruebas de integración
+        # levantan PostgreSQL con Testcontainers y SÍ se ejecutan.
+        run: dotnet test backend/PlanVibe.slnx --configuration Release --no-build --verbosity normal
+
+  frontend:
+    name: Frontend · tipos, pruebas y compilación
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        # npm ci instala exactamente lo que dice el bloqueo de versiones.
+        run: npm ci
+        working-directory: frontend
+
+      - name: Auditar dependencias
+        # Falla ante vulnerabilidades altas o críticas. Las moderadas se anotan
+        # pero no detienen la entrega: parar por un aviso menor en una herramienta
+        # de desarrollo enseña al equipo a ignorar este paso.
+        run: npm audit --audit-level=high
+        working-directory: frontend
+
+      - name: Comprobar tipos
+        run: npm run typecheck
+        working-directory: frontend
+
+      - name: Ejecutar pruebas
+        run: npm test
+        working-directory: frontend
+
+      - name: Compilar
+        env:
+          # Valores de sustitución. Los reales llegan en tiempo de ejecución.
+          SESION_SECRETO: secreto-de-integracion-continua-de-32-caracteres-minimo
+          API_URL_INTERNA: http://api:8080
+        run: npm run build
+        working-directory: frontend
+
+  contenedores:
+    name: Contenedores · compilar imágenes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar imagen de la API
+        # Solo se compila, no se publica: comprueba que el Dockerfile sigue siendo
+        # válido tras cambiar dependencias o estructura de proyectos.
+        run: docker build -t planvibe-api:ci ./backend
+
+      - name: Compilar imagen de la web
+        run: docker build -t planvibe-web:ci ./frontend
+
+      - name: Validar docker-compose
+        env:
+          POSTGRES_PASSWORD: comprobacion-de-sintaxis
+          JWT_CLAVE: clave-de-comprobacion-de-sintaxis-con-longitud-suficiente-para-pasar-la-validacion
+          SESION_SECRETO: secreto-de-comprobacion-de-32-caracteres
+        run: docker compose config --quiet

@@ -1,7 +1,45 @@
-﻿################################################################################
+﻿# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+coverage/
+*.coverage
+*.trx
+################################################################################
 # Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
 ################################################################################
 
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Entorno y secretos ---
+# Nunca versionar credenciales reales. Solo se versiona .env.example.
+.env
+.env.*
+!.env.example
+*.pfx
+*.key
+secrets.json
+
+# --- Sistema operativo y editores ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- Docker ---
+docker/volumes/
 /.vs/VSWorkspaceState.json
 /.vs/ProjectSettings.json
 /.vs/slnx.sqlite

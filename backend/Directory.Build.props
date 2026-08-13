@@ -1,0 +1,48 @@
+<Project>
+
+  <!--
+    Propiedades comunes a todos los proyectos del backend.
+    Centralizarlas evita que cada .csproj repita configuración y se desincronice.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>false</InvariantGlobalization>
+
+    <!-- Los avisos del compilador son errores: impide que la deuda técnica se acumule en silencio. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+
+    <!-- Gestión centralizada de versiones de paquetes en Directory.Packages.props. -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <!-- Reproducibilidad y trazabilidad de la compilación. -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!--
+      CS1591 y CS1573: no exigimos comentario XML en cada miembro ni en cada parámetro.
+      Se documenta lo que aporta (una decisión, una restricción, un porqué) y se deja sin comentar
+      lo que el propio nombre ya explica. Obligar a documentarlo todo produce ruido del tipo
+      "/// <param name="Titulo">El título.</param>", que estorba más de lo que ayuda.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Seguridad de la cadena de suministro">
+    <!--
+      Auditoría de vulnerabilidades en cada restauración, incluidas las dependencias transitivas.
+      Combinado con TreatWarningsAsErrors, un paquete con CVE conocido rompe la compilación
+      en lugar de pasar desapercibido en un aviso.
+    -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+</Project>

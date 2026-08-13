@@ -1,0 +1,16 @@
+# Los planes públicos sí interesa que se indexen: es parte de que la gente encuentre
+# la plataforma. Lo que no debe indexarse es nada que dependa de quién esté dentro.
+
+User-agent: *
+Allow: /
+Allow: /explorar
+Allow: /plan/
+
+Disallow: /perfil
+Disallow: /mis-planes
+Disallow: /crear
+Disallow: /acceso
+Disallow: /verificacion
+Disallow: /moderacion
+Disallow: /reportar
+Disallow: /api/

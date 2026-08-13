@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------------------
+# Reglas de C# de PlanVibe: código limpio verificado por el compilador, no por
+# revisión manual.
+#
+# Está en `backend/` y no en la raíz del repositorio a propósito. El contexto de
+# compilación de la imagen de Docker es esta carpeta, así que un `.editorconfig`
+# de más arriba no llega al contenedor: las supresiones justificadas no se
+# aplicarían y `docker build` fallaría con errores que en local no aparecen.
+#
+# Sin `root = true`: al trabajar en local hereda además las reglas de formato del
+# `.editorconfig` de la raíz. Dentro de Docker, ese padre no existe y este archivo
+# se basta por sí solo.
+# ---------------------------------------------------------------------------
+
+[*.{cs,csx}]
+indent_size = 4
+max_line_length = 140
+
+[*.cs]
+# Organización de usings
+dotnet_sort_system_directives_first = true
+csharp_using_directive_placement = outside_namespace:warning
+
+# Namespaces con ámbito de archivo (menos anidamiento)
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Inmutabilidad y expresividad
+dotnet_style_readonly_field = true:warning
+dotnet_style_require_accessibility_modifiers = always:warning
+csharp_prefer_braces = true:warning
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
+
+# Análisis de nulabilidad tratado como error en compilación
+dotnet_diagnostic.CS8600.severity = error
+dotnet_diagnostic.CS8602.severity = error
+dotnet_diagnostic.CS8603.severity = error
+dotnet_diagnostic.CS8618.severity = error
+
+# CA2007 (ConfigureAwait) no aplica en ASP.NET Core: no hay contexto de sincronización.
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1710 exige sufijos ingleses (Exception, Collection). El dominio usa el lenguaje
+# ubicuo del negocio, que es español: "ExcepcionDeDominio" y "NormasDelPlan"
+# comunican mejor que un híbrido a medias.
+dotnet_diagnostic.CA1710.severity = none
+
+# Recordatorio de seguridad: no construir SQL por concatenación.
+dotnet_diagnostic.CA2100.severity = error
+
+# No registrar información sensible ni usar aleatoriedad débil en contextos de seguridad.
+dotnet_diagnostic.CA5394.severity = error
+
+# Nomenclatura: interfaces con prefijo I
+dotnet_naming_rule.interfaces_empiezan_por_i.severity = warning
+dotnet_naming_rule.interfaces_empiezan_por_i.symbols = interfaz
+dotnet_naming_rule.interfaces_empiezan_por_i.style = prefijo_i
+dotnet_naming_symbols.interfaz.applicable_kinds = interface
+dotnet_naming_style.prefijo_i.required_prefix = I
+dotnet_naming_style.prefijo_i.capitalization = pascal_case
+
+# Nomenclatura: campos privados con guion bajo
+dotnet_naming_rule.campos_privados_guion_bajo.severity = warning
+dotnet_naming_rule.campos_privados_guion_bajo.symbols = campo_privado
+dotnet_naming_rule.campos_privados_guion_bajo.style = guion_bajo_camel
+dotnet_naming_symbols.campo_privado.applicable_kinds = field
+dotnet_naming_symbols.campo_privado.applicable_accessibilities = private
+dotnet_naming_style.guion_bajo_camel.required_prefix = _
+dotnet_naming_style.guion_bajo_camel.capitalization = camel_case
+
+# En las pruebas, el nombre del método ES la especificación: se lee en el informe
+# de fallos. "Abandonar_promueve_a_la_primera_persona_de_la_lista_de_espera"
+# comunica la regla; su equivalente en PascalCase, no. Por eso se permiten los
+# guiones bajos solo aquí.
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none
