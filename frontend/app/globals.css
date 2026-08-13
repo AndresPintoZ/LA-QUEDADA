@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+body {
+  background: #F3F6F5;
+  color: #0C1A22;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Enlaces: definidos aquí para no heredar el azul del navegador. */
+a { color: #0B7C9B; text-decoration: none; }
+a:hover { color: #075E77; }
+
+/* Área táctil mínima cómoda en móvil (RNF accesibilidad). */
+button, a[role='button'] { min-height: 44px; }
