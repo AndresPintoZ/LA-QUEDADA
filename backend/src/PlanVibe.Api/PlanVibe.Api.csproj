@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Capa de presentación HTTP: endpoints mínimos, autenticación, límites de peticiones,
+    cabeceras de seguridad y composición de dependencias. No contiene reglas de negocio.
+  -->
+  <PropertyGroup>
+    <RootNamespace>PlanVibe.Api</RootNamespace>
+    <UserSecretsId>planvibe-api-2026</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlanVibe.Infrastructure\PlanVibe.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <!-- Solo para las herramientas de línea de comandos de EF Core: no viaja al contenedor. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+  </ItemGroup>
+
+  <!-- Permite que el proyecto de pruebas de integración acceda a la clase Program. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="PlanVibe.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>
