@@ -1,0 +1,24 @@
+# Lo que NO debe entrar en el contexto de compilación.
+# Además de acelerar la copia, evita que un appsettings local con secretos
+# acabe dentro de una imagen que después se publica.
+
+**/bin/
+**/obj/
+**/.vs/
+**/TestResults/
+**/*.user
+
+# Los tests no se compilan dentro de la imagen: se ejecutan en integración continua.
+tests/
+
+# Secretos y configuración local
+**/.env
+**/.env.*
+**/appsettings.Local.json
+**/secrets.json
+**/*.pfx
+**/*.key
+
+.git/
+.gitignore
+README.md

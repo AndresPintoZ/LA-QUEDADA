@@ -1,0 +1,184 @@
+# =============================================================================
+# Entorno local completo de PlanVibe: base de datos, API y web.
+#
+#   docker compose up -d --build     levantar todo
+#   docker compose logs -f api       ver los registros de la API
+#   docker compose down              parar (los datos se conservan)
+#   docker compose down -v           parar y BORRAR los datos
+#
+# Antes del primer arranque:  copiar docker/.env.example a .env y rellenarlo.
+# =============================================================================
+
+name: planvibe
+
+services:
+  # ---------------------------------------------------------------------------
+  # Base de datos
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgis/postgis:17-3.5-alpine
+    container_name: planvibe-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-planvibe}
+      POSTGRES_USER: ${POSTGRES_USER:-planvibe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en el archivo .env}
+
+      # Cotejo determinista y codificación UTF-8: evita sorpresas al ordenar
+      # nombres con tildes y con la letra ñ.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+
+    volumes:
+      - datos-db:/var/lib/postgresql/data
+      # Los scripts de esta carpeta se ejecutan solo al crear el volumen.
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+
+    # El puerto se publica solo en la interfaz local (127.0.0.1), nunca en 0.0.0.0.
+    # Sin esa restricción, la base de datos quedaría accesible desde toda la red
+    # a la que esté conectado el equipo.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-planvibe} -d ${POSTGRES_DB:-planvibe}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - interna
+
+  # ---------------------------------------------------------------------------
+  # API .NET
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: planvibe-api
+    restart: unless-stopped
+
+    depends_on:
+      db:
+        # No arranca hasta que PostgreSQL acepta conexiones. Sin esto, la API
+        # se levantaría antes y fallaría al aplicar las migraciones.
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_HTTP_PORTS: 8080
+
+      # El nombre de servicio "db" lo resuelve la red interna de Docker.
+      ConnectionStrings__PlanVibe: "Host=db;Port=5432;Database=${POSTGRES_DB:-planvibe};Username=${POSTGRES_USER:-planvibe};Password=${POSTGRES_PASSWORD};Include Error Detail=${INCLUIR_DETALLE_DE_ERROR:-false}"
+
+      # Clave de firma de los tokens. Llega por entorno y nunca está en el código.
+      Jwt__Clave: ${JWT_CLAVE:?Falta JWT_CLAVE en el archivo .env}
+      Jwt__Emisor: planvibe-api
+      Jwt__Audiencia: planvibe-web
+
+      Cors__OrigenesPermitidos__0: ${URL_WEB:-http://localhost:3000}
+
+      Nominatim__UserAgent: ${NOMINATIM_USER_AGENT:-PlanVibe/0.1 (desarrollo local)}
+      VerificacionSimulada__UrlDeRetorno: ${URL_WEB:-http://localhost:3000}/verificacion/resultado
+
+      # Sin sockets de diagnóstico: no se usan y evitan una escritura más en un
+      # contenedor con el sistema de archivos en solo lectura.
+      DOTNET_EnableDiagnostics: 0
+
+    # Solo accesible desde el equipo local: en esta arquitectura quien llama a la
+    # API es el servidor de Next, no el navegador.
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+
+    healthcheck:
+      test: ["CMD", "dotnet", "PlanVibe.Api.dll", "--comprobar-salud"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+    # ---- Endurecimiento del contenedor ----
+    # El proceso no necesita escribir en su propio sistema de archivos ni obtener
+    # privilegios nuevos. Restringirlo limita lo que se puede hacer desde dentro
+    # aunque se logre ejecutar código.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      # .NET necesita escribir archivos temporales; se le da un espacio en memoria
+      # sin permiso de ejecución en lugar de abrir el disco entero.
+      - /tmp:rw,noexec,nosuid,size=64m
+      # ASP.NET Core guarda aquí las claves de protección de datos que usa Identity.
+      # Sin este espacio, el proceso no arrancaría con el disco en solo lectura.
+      #
+      # Al ser memoria, las claves se pierden al reiniciar el contenedor. Es aceptable
+      # aquí porque las sesiones no dependen de ellas: van en JWT y en tokens de
+      # renovación guardados en la base de datos. En producción, con varias instancias,
+      # estas claves deben compartirse en un almacén común.
+      - /home/app/.aspnet:rw,noexec,nosuid,size=8m
+
+    networks:
+      - interna
+
+  # ---------------------------------------------------------------------------
+  # Aplicación web (Next.js)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Solo variables públicas: lo que se pasa aquí acaba dentro del paquete
+        # que descarga el navegador, así que nunca debe llevar un secreto.
+        NEXT_PUBLIC_NOMBRE_APP: PlanVibe
+    container_name: planvibe-web
+    restart: unless-stopped
+
+    depends_on:
+      - api
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      # La web habla con la API por la red interna de Docker, no por localhost.
+      # Este valor no se expone al navegador: lo usa el servidor de Next (BFF).
+      API_URL_INTERNA: http://api:8080
+
+      # Secreto con el que se firma la cookie de sesión del BFF.
+      SESION_SECRETO: ${SESION_SECRETO:?Falta SESION_SECRETO en el archivo .env}
+
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      # Next escribe su caché de imágenes optimizadas en tiempo de ejecución.
+      - /aplicacion/.next/cache:rw,nosuid,size=128m
+
+    networks:
+      - interna
+
+networks:
+  interna:
+    driver: bridge
+
+volumes:
+  datos-db:
+    name: planvibe-datos-db
